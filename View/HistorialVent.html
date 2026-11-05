@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+<body clas="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+
+        <div class="container">
+
+            <a class="navbar-brand" href="/">Historial Ventas</a>
+            <div class="navbar-nav">
+
+                <a class="nav-link" href="/View/Index.html">Inicio</a>
+                <a class="nav-link" href="/View/Productos.html">Productos</a>
+                <a class="nav-link" href="/View/Ventas.html">Ventas</a>
+            </div>
+        </div>
+
+    </nav>
+
+    <div class="container mt-4">
+
+        <h2 class="mb-4">Historial de ventas</h2>
+
+        <div class="card shadow-sm mb-4">
+
+            <div class="card-body">
+
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-md-4">
+
+                        <label for="fechaDesde" class="form-label">Desde</label>
+                        <input type="date" id="fechaDesde" class="form-control">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="fechaHasta" class="form-label">Hasta</label>
+                        <input type="date" id="fechaHasta" class="form-control"> 
+                    </div>
+
+
+                    <div class="col-md-4">
+                        <button class="btn btn-primary" onclick="filtrarVentas()">
+                            Filtrar
+                        </button>
+                        <button class="btn btn-secondary" onclick="limpiarFiltro()">
+                            Limpiar
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card-shadow-sm">
+
+            <div class="card-body">
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+
+                        <thead class="table-dark">
+                            <tr>
+
+                                <th>VentaID</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Vendedor</th>
+                                <th>Numeración</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Subtotal</th>
+                                <th>Método de pago</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaVentas">
+                        <tr>
+                            <td colspan="10" class="text-center">
+                                Cargando ventas...
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-end mt-3">
+                    <h5>Total mostrado: <span id="totalVentas">L. 0.00</span></h5>
+                    <small class="text-muted">
+                        Suma de los subtotales de las filas mostradas.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+
+
+        let ventasOriginales = [];
+
+        document.addEventListener("DOMContentLoaded", cargarVentas);
+
+        async function cargarVentas() {
+
+            const tabla = document.getElementById("/tablaVentas");
+            try{
+                const respuesta = await fetch("/HistorialVent");
+
+                if(!respuesta.ok){
+                    throw new Error("No se puede consultar el historial");
+                }
+
+                ventasOriginales = await respuesta.json();
+                mostrarVentas(ventasOriginales);
+            }catch{
+                console.error("Error al cargar las ventas", error);
+
+
+                 tabla.innerHTML=`
+                 <tr>
+                    <td colspan="10" class="text-center text-danger">
+                     Error al cargar las ventas.
+                    </td>
+                </tr>`;
+
+
+                document.getElementById("totalVentas").textContent= "L. 0.00";
+
+
+            }
+        }
+
+        function mostrarVentas(ventas){
+            const tabla = document.getElementById("tablaVentas");
+
+            tabla.innerHTML = "";
+
+            let total = 0;
+
+            if(ventas.length === 0){
+                tabla.innerHTML=`
+                <tr>
+                    <td colspan="10" class="text-center">
+                        No hay ventas para mostrar
+                    </td>
+                </tr>`;
+            }
+
+            ventas.forEach(venta => {
+                const subtotal = Number(venta.SubtoTal) || 0;
+                total += subtotal;
+
+                const fila = document.getElementById("tr");
+                [
+                    venta.VentaID,
+                    venta.Fecha ??"",
+                    venta.Cliente ??"",
+                    venta.Vendedor ??"",
+                    venta.Numeracion ??"",
+                    venta.Cantidad ??"",
+                    venta.Precio == null ?"" : Number(venta.Precio).toFixed(2),
+                    subtotal.toFixed(2),
+                    venta.MetodoPago ??"",
+                    venta.Estado ??"",
+                ].forEach(valor =>{
+                    const celda = document.createElement("td");
+                    celda.textContent = valor;
+                    fila.appendChild(celda);
+                });
+
+                tabla.appendChild(fila);
+                
+            });
+
+            document.getElementById("totalVentas").textContent = "L" + total.toFixed(2);
+        }
+
+
+        function filtrarVentas(){
+
+            const desde =  document.getElementById("fechaDesde").value;
+            const hasta = document.getElementById("fechaHasta").value;
+
+            if(desde && hasta && desde > hasta){
+                alert("La fecha inicial no puede ser posterior a la fecha final.");
+                return;
+            }
+
+            const filtradas = ventasOriginales.filter(venta =>{
+                if(!venta.Fecha) return false;
+
+                const fecha = String(venta.Fecha).substring(0,10);
+
+                return (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
+            });
+
+            mostrarVentas(filtradas);
+        }
+
+        function limpiarFiltros(){
+            document.getElementById("fechDesde").value = "";
+            document.getElementById("fechaHasta").valor = "";
+
+            mostrarVentas(ventasOriginales);
+        }
+
+    </script>
+
+    
+
+</body>
+</html>

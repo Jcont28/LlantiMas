@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+</head>
+<body>
+
+        <div class="container mt-5">
+
+
+            <h2>Registrar Venta</h2>
+
+            <div class="card p-4">
+
+                <div class="mb-3">
+                    <label class="form-label">Client</label>
+                    <select id="cboCliente" class="form-select">
+                        <option value="">Seleccione un cliente</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Producto</label>
+
+                    <select id="cboProducto" class="form-select" onchange="cargarPrecio()">
+                        <option value="">Seleccione un Producto</option>
+                    </select>
+                </div>
+
+                <label class="form-label">Vendedor</label>
+
+                <select id="cboVendedor" class="form-select">
+                    <option value="">Seleccione un Vendedor</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Cantidad</label>
+                <input type="number" id="txtCantidad" class="form-control" min="1" oninput="calcularTotal()">
+            </div>
+
+            <div class="mb-3">
+
+                <label class="form-label">Precio</label>
+                <input type="number" id="txtPrecio" class="form-control" step="0.01" oninput="calcularTotal()">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Metodo de Pago</label>
+                <select id="cboMetodopago" class="form-select">
+
+                    <option value="">
+                        Seleccione método de pago
+                    </option>
+
+                    <option value="Efectivo">
+                        Efectivo
+                    </option>
+
+                    <option value="Tarjeta">
+                        Tarjeta
+                    </option>
+
+                    <option value="Transferencia">
+                        Transferencia
+                    </option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+
+                <label class="form-label">Total</label>
+
+                <input type="text" id="txtTotal" class="form-control" readonly>
+            </div>
+
+            <button class="btn btn-primary" onclick="registrarVenta()">
+                Registrar Venta 
+            </button>
+
+        </div>
+    
+
+        <script>
+
+            async function calcularTotal() {
+
+                const cantidad = Number(document.getElementById("txtCantidad").value);
+                
+                const precio = Number(document.getElementById("txtPrecio").value);
+
+                const total = cantidad * precio;
+
+                document.getElementById("txtTotal").value = total.toFixed(2);
+            }
+
+
+            async function cargarPrecio() {
+                
+                const ProductoID = document.getElementById("cboProducto").value;
+
+                if(!ProductoID){
+                    document.getElementById("txtPrecio").value = "";
+                    return;
+                }
+
+                try{
+                    const respuesta = await fetch(`/producto/Producto/${ProductoID}`);
+
+                    const producto = await respuesta.json();
+
+                    if(!respuesta.ok){
+                        alert(producto.mensaje);
+                        return;
+                    }
+
+                    document.getElementById("txtPrecio").value = producto.Precio;
+
+                    calcularTotal();
+                }catch(error){
+                    console.log("Error al cargar el precio", error);
+                }
+            }
+
+            async function cargarProducto() {
+
+                try{
+                    const respuesta = await fetch("/producto");
+
+                    const producto = await respuesta.json();
+
+                    const cbo = document.getElementById("cboProducto");
+
+                    cbo.innerHTML = `
+                    <option value="">Seleccionar un Producto</option>`;
+
+                    producto.forEach(producto => {
+
+                        cbo.innerHTML += `<option value="${producto.ProductoID}">
+                            ${producto.Nombre} - ${producto.Numeracion} - $${producto.Precio}
+                            </option>`;
+                        
+                    });
+                }catch(error){
+                    console.log("Erro al cargar Productos", error);
+                }
+                
+            }
+            
+
+            async function cargarClientes() {
+                
+                try{
+                    const respuesta = await fetch("/Cliente");
+
+                    const cliente = await respuesta.json();
+
+                    const cbo = document.getElementById("cboCliente");
+
+                    cbo.innerHTML = `<option value="">Seleccionar un cliente</option>`;
+
+                    cliente.forEach(cliente =>{
+                        cbo.innerHTML += `<option value="${cliente.ClienteID}">
+                            ${cliente.Nombre} </option>`;
+                    });
+                }catch(error){
+                    console.log("Error al cargar clientes", error);
+                }
+            }
+
+
+
+            async function cargarVendedor() {
+                try{
+                    const respuesta = await fetch("/Vendedor");
+
+                    const Vendedor = await respuesta.json();
+
+                    const cbo =  document.getElementById("cboVendedor");
+
+                    cbo.innerHTML = `<option value="">Seleccionar vendedor</option>`;
+
+                    Vendedor.forEach(Vendedor=>{
+                        cbo.innerHTML += `<option values="${Vendedor.VendedorID}">
+                            ${Vendedor.NombreVendedor}</option>`;
+                    });
+                }catch(error){
+                    console.log("Error al cargar los vendedores", error);
+                }
+            }
+
+
+
+
+    async function registrarVenta() {
+
+    const ClienteID = document.getElementById("cboCliente").value;
+    const ProductoID = document.getElementById("cboProducto").value;
+    const VendedorID = document.getElementById("cboVendedor").value;
+    const Cantidad = Number(document.getElementById("txtCantidad").value);
+    const Precio = Number(document.getElementById("txtPrecio").value);
+    const Total = Number(document.getElementById("txtTotal").value);
+    const MetodoPago = document.getElementById("cboMetodopago").value;
+
+    // Validar campos
+    if (!ClienteID || !ProductoID || !VendedorID ||
+        !Cantidad || !Precio || !MetodoPago) {
+
+        alert("Todos los campos son obligatorios");
+        return;
+    }
+
+    try {
+
+        const respuesta = await fetch("/Venta", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                ClienteID: ClienteID,
+                ProductoID: ProductoID,
+                VendedorID: VendedorID,
+                Cantidad: Cantidad,
+                Precio: Precio,
+                Total: Total,
+                MetodoPago: MetodoPago
+            })
+
+        });
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+
+            alert(resultado.mensaje);
+            return;
+        }
+
+        alert(resultado.mensaje);
+
+        // Limpiar formulario
+        document.getElementById("cboCliente").value = "";
+        document.getElementById("cboProducto").value = "";
+        document.getElementById("cboVendedor").value = "";
+        document.getElementById("txtCantidad").value = "";
+        document.getElementById("txtPrecio").value = "";
+        document.getElementById("txtTotal").value = "";
+        document.getElementById("cboMetodopago").value = "";
+
+    } catch (error) {
+
+        console.log("Error al registrar venta:", error);
+
+        alert("No se pudo registrar la venta");
+
+    }
+
+}
+
+            document.addEventListener("DOMContentLoaded", () => {
+                cargarProducto();
+                cargarClientes();
+                cargarVendedor();
+            })
+
+
+
+        </script>
+</body>
+</html>

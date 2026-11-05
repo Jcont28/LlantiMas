@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reportes de ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">Mi Inventario</a>
+        <a class="btn btn-outline-light btn-sm" href="/HistorialVentas.html">
+            Historial de ventas
+        </a>
+    </div>
+</nav>
+
+<main class="container py-4">
+    <h2 class="mb-4">Reportes de ventas</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label" for="desde">Fecha desde</label>
+                    <input type="date" id="desde" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="hasta">Fecha hasta</label>
+                    <input type="date" id="hasta" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" onclick="cargarReportes()">
+                        Consultar
+                    </button>
+                    <button class="btn btn-secondary" onclick="limpiar()">
+                        Todas las fechas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mensaje" class="alert alert-danger d-none"></div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Ventas completadas</h6>
+                    <h3 id="cantidadVentas">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Ingresos registrados</h6>
+                    <h3 id="ingresos">L 0.00</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Unidades vendidas</h6>
+                    <h3 id="unidades">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Ventas por día</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Ventas</th>
+                            <th>Unidades</th>
+                            <th>Ingresos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaPeriodo"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Ventas por vendedor</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Vendedor</th>
+                            <th>Ventas</th>
+                            <th>Unidades</th>
+                            <th>Total vendido</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaVendedores"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Numeraciones más vendidas</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Numeración</th>
+                            <th>Unidades vendidas</th>
+                            <th>Total vendido</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProductos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    document.addEventListener("DOMContentLoaded", cargarReportes);
+
+    function dinero(valor) {
+        return "L " + (Number(valor) || 0).toLocaleString("es-HN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function mostrarFilas(id, filas, columnas) {
+        const tabla = document.getElementById(id);
+        tabla.replaceChildren();
+
+        if (!filas.length) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = columnas;
+            td.className = "text-center text-muted";
+            td.textContent = "No hay datos para mostrar";
+            tr.appendChild(td);
+            tabla.appendChild(tr);
+            return;
+        }
+
+        filas.forEach(fila => {
+            const tr = document.createElement("tr");
+
+            Object.values(fila).forEach(valor => {
+                const td = document.createElement("td");
+                td.textContent = valor ?? "";
+                tr.appendChild(td);
+            });
+
+            tabla.appendChild(tr);
+        });
+    }
+
+    async function cargarReportes() {
+        const desde = document.getElementById("desde").value;
+        const hasta = document.getElementById("hasta").value;
+        const mensaje = document.getElementById("mensaje");
+
+        mensaje.classList.add("d-none");
+
+        if (desde && hasta && desde > hasta) {
+            mensaje.textContent = "La fecha inicial no puede ser posterior a la final.";
+            mensaje.classList.remove("d-none");
+            return;
+        }
+
+        const parametros = new URLSearchParams();
+        if (desde) parametros.set("desde", desde);
+        if (hasta) parametros.set("hasta", hasta);
+
+        const sufijo = parametros.toString()
+            ? "?" + parametros.toString()
+            : "";
+
+        try {
+            const [periodoRes, vendedorRes, productosRes] = await Promise.all([
+                fetch("/reportes/ventas-periodo" + sufijo),
+                fetch("/reportes/ventas-vendedor" + sufijo),
+                fetch("/reportes/productos-mas-vendidos" + sufijo)
+            ]);
+
+            if (!periodoRes.ok || !vendedorRes.ok || !productosRes.ok) {
+                throw new Error("Uno o más reportes no pudieron cargarse.");
+            }
+
+            const [periodo, vendedores, productos] = await Promise.all([
+                periodoRes.json(),
+                vendedorRes.json(),
+                productosRes.json()
+            ]);
+
+            const cantidad = periodo.reduce(
+                (suma, fila) => suma + Number(fila.CantidadVentas || 0), 0
+            );
+            const ingresos = periodo.reduce(
+                (suma, fila) => suma + Number(fila.Ingresos || 0), 0
+            );
+            const unidades = periodo.reduce(
+                (suma, fila) => suma + Number(fila.UnidadesVendidas || 0), 0
+            );
+
+            document.getElementById("cantidadVentas").textContent = cantidad;
+            document.getElementById("ingresos").textContent = dinero(ingresos);
+            document.getElementById("unidades").textContent = unidades;
+
+            mostrarFilas("tablaPeriodo", periodo.map(v => ({
+                Fecha: v.Fecha
+                    ? String(v.Fecha).substring(0, 10)
+                    : "",
+                Ventas: v.CantidadVentas,
+                Unidades: v.UnidadesVendidas,
+                Ingresos: dinero(v.Ingresos)
+            })), 4);
+
+            mostrarFilas("tablaVendedores", vendedores.map(v => ({
+                Vendedor: v.NombreVendedor,
+                Ventas: v.CantidadVentas,
+                Unidades: v.UnidadesVendidas,
+                Total: dinero(v.TotalVendido)
+            })), 4);
+
+            mostrarFilas("tablaProductos", productos.map(p => ({
+                Numeracion: p.Numeracion,
+                Unidades: p.UnidadesVendidas,
+                Total: dinero(p.TotalVendido)
+            })), 3);
+
+        } catch (error) {
+            console.error(error);
+            mensaje.textContent = error.message;
+            mensaje.classList.remove("d-none");
+        }
+    }
+
+    function limpiar() {
+        document.getElementById("desde").value = "";
+        document.getElementById("hasta").value = "";
+        cargarReportes();
+    }
+</script>
+
+</body>
+</html>
