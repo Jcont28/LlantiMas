@@ -26,7 +26,7 @@ app.get("/", (req, res) => {
 
 app.use(express.static(path.join(__dirname, "../View")));
 
-app.post("/Index", async(req, res) =>{
+app.post("/Index.html", async(req, res) =>{
 
     try{
         const {usuario, password } = req.body;
