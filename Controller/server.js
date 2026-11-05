@@ -748,10 +748,6 @@ app.get("/reportes/venta-periodo", async(req, res) =>{
     }
 });
 
-app.get("/index.html", (req, res) => {
-    res.sendFile(path.join(__dirname, "../View/index.html"));
-});
-
 app.get("/Index.html", (req, res) => {
     res.sendFile(path.join(__dirname, "../View/Index.html"));
 });
